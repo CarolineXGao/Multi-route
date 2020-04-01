@@ -509,8 +509,8 @@ LongAirborne<-function(particles,Input){
 
 
 $$
-D_{sa}^{k,j} = \frac{{\pi \Delta t_{i,j}^kR_0}}{{6{{\left( {{s_{i,j}}tg\left( {\frac{\alpha }{2}} \right) + {R_0}} \right)}}}}\mathop \smallint \limits_0^{{d_a}} G\left( d_0 \right)E\left( d_r \right) d_0^3L\left( {j,T}  \right)  d{d_r} \\
- = \frac{{3.14 *Tij*{I_j}*0.01}}{{6{{\left( {Distance*0.2217 + 0.01} \right)}}}} \text{TCID50}\mathop \smallint \limits_0^{{d_a}} G\left( {{d_0}} \right)E\left( {{d_r}} \right)d_0^3d{d_r}
+D_{sa}^{k,j} = \frac{ \pi \Delta t_{i,j} ^kR_0 } { 6 \left( {s_{i,j} tg\left( {\frac{\alpha } {2}} \right) + {R_0}} \right)} \mathop \smallint \limits_0^{{d_a}} G\left( d_0 \right)E\left( d_r \right) d_0^3L\left( {j,T}  \right)  d{d_r} \\
+ = \frac{3.14 *Tij*{I_j}*0.01}{6{\left(Distance*0.2217 + 0.01 \right)}}  \text{TCID50}\mathop \smallint \limits_0^{{d_a}} G\left( {d_0} \right)E\left( {d_r} \right) d_0^3d{d_r}
 $$
 
 
@@ -551,8 +551,8 @@ ShortAirborne<-function(particles,Input){
 ## Exposure dose to direct inhalation of medium droplets or droplet nuclei
 
 $$
-D_{in}^{k,j} = \frac{{\pi \Delta t_{i,j}^kR_0}}{{6{{\left( {{s_{i,j}}tg\left( {\frac{\alpha }{2}} \right) + {R_0}} \right)}}}}\mathop \smallint \limits_{{d_a}}^{{d_{b,{\rm{max}}}}} P\left( {{d_0},{s_{i,j}},{\rm{U}}} \right)G\left( {{d_0}} \right)E\left( {{d_b}} \right)d_0^3L\left( j,T \right) \xi_{dd}(d_o )d{d_b} \\
-= \frac{{3.14 * \text{Tij}*0.01}}{{6{{\left( {\text{Distance}*0.2217 + 0.01} \right)}}}} \mathop \smallint \limits_{{d_a}}^{{d_{b,{\rm{max}}}}} P\left( {{d_0},{s_{i,j}},{\rm{U}}} \right)G\left( {{d_0}} \right)E\left( {{d_b}} \right)d_0^3 \text{TCID50}\text{*LargeDropDilute}*d{d_b} \\
+D_{in}^{k,j} = \frac{ \pi \Delta t_{i,j}^kR_0}{6 \left( { s_{i,j} tg\left( \frac{\alpha}{2} \right) + R_0} \right)} \mathop \smallint \limits_{d_a}^{d_{b,{\rm{max}}}} P\left( {d_0,s_{i,j},\rm{U}} \right) G\left( {d_0} \right) E\left( d_b \right) d_0^3 L\left( j,T \right) \xi_{dd}(d_o) d{d_b} \\
+= \frac{3.14 * \text{Tij}*0.01}{6{\left(\text{Distance}*0.2217 + 0.01 \right)}} \mathop \smallint \limits_{d_a}^{d_{b,{\rm{max}}}} P\left( {d_0,s_{i,j},\rm{U}} \right) G\left( {d_0} \right)E\left( {d_b} \right)d_0^3 \text{TCID50}\text{*LargeDropDilute}*d{d_b} \\
 $$
 ```{r}
 DirectInhal<-function(particles,Input){
