@@ -1,0 +1,1202 @@
+---
+title: 'Supplementary R code'
+subtitle: 'Multi-route route respiratory infection: when a transmission route may dominant'
+author: "Caroline X. Gao, Yuguo Li, Jianjian Wei, Sue Cotton, Matthew Hamilton, M Lei Wang, Hui-Ling Yen and Benjamin J. Cowling"
+
+output:
+  html_document:
+    df_print: paged
+    toc: true
+---
+```{r setup, include=FALSE}
+
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+library(scales)
+library(readxl)
+library(splines)
+library(fitdistrplus)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(plotly)
+#library(rgl)
+library(splines)
+library(doParallel)
+registerDoParallel(cores=6)
+library(kableExtra)
+```
+
+
+```{r}
+sessionInfo()
+```
+
+# Introduction 
+
+This file includes all R code for simulations carried out for the paper "Contribution of airborne route in transmitting multi-route respiratory infectious disease and the effect of ventilation". 
+
+
+# Setup 
+## generate particles 
+
+```{r cars}
+
+#generate source data 
+set.seed(1234) 
+Source_data<-(1:17439)
+for (i in 1:17439)
+{
+if (i<160)
+Source_data[i]=runif(1, min=1, max=2)
+if(i>=160&i<1160)
+Source_data[i]=runif(1, min=2, max=4)
+if(i>=1160&i<4590)
+Source_data[i]=runif(1, min=4, max=8)
+if(i>=4590&i<10170)
+Source_data[i]=runif(1, min=8, max=16)
+if(i>=10170&i<13180)
+Source_data[i]=runif(1, min=16, max=24)
+if(i>=13180&i<14680)
+Source_data[i]=runif(1, min=24, max=32)
+if(i>=14680&i<15520)
+Source_data[i]=runif(1, min=32, max=40)
+if(i>=15520&i<15910)
+Source_data[i]=runif(1, min=40, max=50)
+if(i>=15910&i<16400)
+Source_data[i]=runif(1, min=50, max=75)
+if(i>=16400&i<16705)
+Source_data[i]=runif(1, min=75, max=100)
+if(i>=16705&i<16889)
+Source_data[i]=runif(1, min=100, max=125)
+if(i>=16889&i<17033)
+Source_data[i]=runif(1, min=125, max=150)
+if(i>=17033&i<17158)
+Source_data[i]=runif(1, min=150, max=200)
+if(i>=17158&i<17255)
+Source_data[i]=runif(1, min=200, max=250)
+if(i>=17255&i<17387)
+Source_data[i]=runif(1, min=250, max=500)
+if(i>=17387&i<17433)
+Source_data[i]=runif(1, min=500, max=1000)
+if(i>=17433&i<=17439)
+Source_data[i]=runif(1, min=1000, max=2000)
+}
+
+#fit with one lognomral distribution 
+fit_lnorm<- fitdist(Source_data,"lnorm" )
+fit_lnorm
+exp(fit_lnorm$estimate[1])
+#fit three lognormal distribution
+#100
+fit_lnorm1<-fitdist(Source_data[1:16705],"lnorm" )
+#100-2000
+fit_lnorm2<-fitdist(Source_data[16706:17439],"lnorm" )
+
+
+#Save data in data frame 
+Source_data<-data.frame(Source_data)
+names(Source_data)<-"observed"
+```
+
+
+## Fitting particle size with log-normal distributions
+
+```{r}
+#Define grid for y 
+PrbGrd <- qnorm(c(0.0001, 0.001,0.01, 0.05, 0.10,0.20,0.30,0.40, 0.50, 0.60, 0.70,0.80,0.90,0.95,0.99,0.999))
+PrbGrdL<-c("0.001", "0.1","1","5","10","20","30","40","50","60","70","80","90","95","99","99.9")
+
+#Define gride for x
+ValGrd<-c(seq(1,9,1),seq(10,90,10),seq(100,1000,100),2000)
+ValGrdL<- rep( "",29) 
+ValGrdL[c(1,10,19,28)]<-ValGrd[c(1,10,19,28)]
+
+#obtain the fitted line for one lognormal distribution
+size<-1:2000
+fit<-data.frame(size,qnorm(plnorm(size,fit_lnorm$estimate[1],fit_lnorm$estimate[2]))) 
+names(fit)[2]=c("P") 
+names(fit)[2]=c("P") 
+
+#obtain the fitted line for three lognomal distirbution
+size1<-1:100
+fit1<-plnorm(size1,fit_lnorm1$estimate[1],fit_lnorm1$estimate[2])
+size2<-100:2000 
+fit2<-plnorm(size2,fit_lnorm2$estimate[1],fit_lnorm2$estimate[2])
+size2<-101:2000 
+fit2<-fit2[2:1901]-fit2[1]
+
+
+#calculate fraction of particles for three log normal distributions
+fraction1=16705/17439
+fraction2=(17439-16705)/17439
+#obtain cumulative distirubtion
+cum1=fit1*fraction1/fit1[length(fit1)]
+cum2=fraction1+ fit2*fraction2/fit2[length(fit2)]
+final<-data.frame(c(size1,size2),qnorm(c(cum1,cum2)))
+
+names(final)=c("size","P") 
+
+```
+
+
+```{r, fig.width=8, fig.height=6}
+
+#generate the plot 
+ggplot()+ 
+      # observed data 
+      geom_point( aes(sample = Source_data$observed, color="Source data"), stat = "qq", distribution ="qnorm", shape = 22) +
+      # one log normal distribution
+      geom_line(aes(y=fit$size, x=fit$P, color="Fitted with log-normal distribution"), size = 1.3, linetype = "dashed")  +
+      # two log normal distributions
+      geom_line(aes(y=final$size, x=final$P, color="Fitted with two log-normal distributions"), size = 1.3) + 
+      #change scales 
+      scale_x_continuous( breaks=PrbGrd, labels=PrbGrdL ,limits = c(min(final$P), 4.2)) +
+      scale_y_log10( breaks=ValGrd, labels=ValGrdL) +
+      xlab("Log-normal percentiles (%) ")+ 
+      ylab(expression(paste("Particle diameters (",mu,"m)" ))) + 
+      #edit legend
+      scale_colour_manual("", breaks=c("Source data" , 
+                                 "Fitted with log-normal distribution", 
+                                 "Fitted with two log-normal distributions"),
+                      values = c("Source data"= "dodgerblue3" , 
+                                 "Fitted with log-normal distribution"="darkolivegreen3", 
+                                 "Fitted with two log-normal distributions"="indianred2"), 
+                      guide = guide_legend(override.aes = list(
+                         linetype = c("blank", "dashed", "solid"),
+                         shape = c(16, NA, NA)))) +
+      #edit theme
+      theme_bw() +
+      theme(legend.position = c(0.25, 0.85), legend.background = element_rect(fill = "transparent"), 
+            legend.key = element_rect(fill = "transparent", colour = "transparent"), legend.key.width = unit(1.3,"cm")) +
+      #add arrow and text 
+      geom_segment(aes(x=1.5,xend=2, y=20, yend=90),
+                  arrow=arrow(length=unit(0.3,"cm")), size=1, colour="darkolivegreen3") +
+      geom_segment(aes(x=1,xend=2.6, y=1000, yend=400),
+                  arrow=arrow(length=unit(0.3,"cm")), size=1, colour="indianred2") +
+      annotate("text", x=1.5, y=11, label= paste0("GM=",round(exp(fit_lnorm$estimate[1]),2))) + 
+      annotate("text", x=0.7, y=700, label=  paste0("GM1=",round(exp(fit_lnorm1$estimate[1])),
+                                                    " GM2=", round(exp(fit_lnorm2$estimate[1])) )) +
+      #flit x y 
+      coord_flip() 
+
+```
+
+
+## Droplet generation
+
+Obtain probability density distribution of droplet size. Then obtain the number of particle counts for each size in an hour (17439 particles per hour). 
+
+
+```{r,fig.width=6,fig.height=4}
+#descrite particile generation 
+particles<-data.frame("Size"=c((1:399)/10,(40:299),(30:200)*10))
+
+#particles<-data.frame("Size"=c(1:299,30:200*10))
+
+# use cumulative distribution function to generate descrite probability density function
+p1<-data.frame(f=plnorm(particles$Size[particles$Size<=100],  fit_lnorm1$estimate[1],fit_lnorm1$estimate[2]) ) %>%
+      mutate(p=ifelse(is.na(lag(f)),f,f-lag(f)))
+sum(p1$p)
+
+# keep size 100 to calculate probability mass function
+p2<-data.frame(f=plnorm(particles$Size[particles$Size>=100],fit_lnorm2$estimate[1],fit_lnorm2$estimate[2])) %>% 
+      mutate(p=ifelse(is.na(lag(f)),f,f-lag(f))) 
+#remove first record 
+p2=p2[2:nrow(p2),]
+sum(p2$p)
+
+
+#fraction within each group 
+p1fraction=fraction1/max(p1)
+p2fraction=fraction2/max(p2)
+
+#combine the data back to particle size 
+particles$probability<-c(p1$p*p1fraction,p2$p*p2fraction)
+sum(particles$probability)
+particles$count=particles$probability*17439
+
+plot<-particles %>% 
+  mutate(Size=round(Size/10)*10) %>%   
+  group_by(Size) %>% 
+  summarise(probability=sum(probability)) %>% 
+  filter(Size<150)
+
+ggplot(plot,aes(x=Size, y=probability)) +
+  geom_bar(stat = "identity", na.rm = TRUE, position="dodge",colour="white",alpha=0.7,fill="#ef6548",alpha=0.6) +
+   scale_x_continuous(breaks=c((0:15)*10)) +
+   scale_y_continuous(labels = percent_format()) +
+   theme_bw() +
+   labs(x="Droplet diameter (µm)", y="Percentage")
+
+```
+
+
+## Droplets deposition on respiratory tract 
+
+```{r}
+
+#Import data 
+deposition<-read_excel("Deposition.xlsx",sheet = "Sheet1")
+deposition<-deposition[deposition$Size>=0.01,]
+deposition$FinalSize<-deposition$Size
+
+# ns model 
+deposition_fit<-lm(Total~ns(FinalSize ,df =9) ,data=deposition)
+deposition$predict<-predict(deposition_fit)
+
+```
+
+```{r, fig.width=8, fig.height=6}
+#Define gride for x
+ValGrd<-c(seq(0.01,0.09,0.01),seq(0.1,0.9,0.1),seq(1,9,1),seq(10,100,10))
+ValGrdL<- rep( "",length(ValGrd)) 
+ValGrdL[c(1,10,19,28,37)]<-ValGrd[c(1,10,19,28,37)]
+
+ggplot(deposition, aes(x=Size))+ 
+      geom_line(aes(y=Nasopharygeal, color="Nasopharygeal") , linetype ="longdash",  size = 1.3) +
+      geom_line(aes(y=Tracheobronchial, color="Tracheobronchial") , linetype="dashed",  size = 1.3) +
+      geom_line(aes(y=Pulmonary, color="Pulmonary") , linetype="twodash", size = 1.3) +
+      geom_line(aes(y=Total, color="Total deposition"), linetype="solid", size = 1.3) +
+      geom_line(aes(y=predict, color="Fitted total deposition") , linetype ="dotted",  size = 1.3) +
+      ylab("Deposition rate ")+ 
+      xlab(expression(paste("Particle diameters (",mu,"m)" ))) + 
+      scale_colour_manual("", breaks=c("Nasopharygeal" , 
+                                 "Tracheobronchial", 
+                                 "Pulmonary", 
+                                 "Total deposition", 
+                                 "Fitted total deposition"),
+                      values = c("Nasopharygeal"= "dodgerblue3" , 
+                                 "Tracheobronchial"="darkolivegreen3", 
+                                 "Pulmonary"="tan2", 
+                                 "Total deposition"="indianred2", 
+                                 "Fitted total deposition"="gray50"),
+                      guide = guide_legend(override.aes = list(
+                         linetype = c("longdash", "dashed","twodash", "solid", "dotted")))) +
+      theme_bw() + 
+      theme(legend.position = c(0.37, 0.85), legend.background = element_rect(fill = "transparent"), 
+            legend.key = element_rect(fill = "transparent", colour = "transparent"), legend.key.width = unit(1.3,"cm")) +
+      scale_y_continuous( breaks=seq(0,1,0.2),limits = c(0,1)) +
+      scale_x_log10( breaks=ValGrd, labels=ValGrdL) 
+```
+
+
+## Droplet travel distance and final size 
+
+```{r, warning=FALSE}
+
+DistanceFrac<-list()
+prob<-list()
+plotsDistance<-list()
+plotsFrac<-list()
+z_Distance<-list()
+z_Frac<-list()
+
+speed<-"U5"
+#extract doplet final size data 
+Final<-read_excel("Droplet_travel.xlsx",sheet = speed, range = "T4:AL24")
+Final<-Final %>% 
+    #reshape long
+    gather(Size,value=FinalSize,-Distance) %>% 
+    group_by(Size) %>% 
+    fill(FinalSize)
+      
+
+#extract travel distance and merge wit final size 
+Prob<-read_excel("Droplet_travel.xlsx",sheet =  speed ,range = "A4:S24")
+Prob<-Prob %>% 
+    #reshape loneg
+    gather(Size,value=Prob,-Distance) %>% 
+    #merge the size data 
+    inner_join(Final)%>% 
+    #remove the unit in size variable
+    mutate(Size =as.numeric(str_extract(Size, "\\d+"))) %>%
+    #calculate faction of final size
+    mutate(Prob=as.numeric(Prob)) %>% 
+    mutate(frac=FinalSize/Size)
+      
+      
+      
+##create  400-2000  particles that the same as 400 particles
+Size_new=data.frame(Size=rep(400,16),Size_new=5:20*100)
+Prob400o<-Prob %>% 
+    filter(Size==400) %>% 
+    full_join(Size_new) %>% 
+    mutate(FinalSize=Size_new*frac) %>% 
+    mutate(Size=Size_new) %>% 
+    select(-Size_new)
+      
+Prob<-rbind(Prob,Prob400o)
+        
+#prediction model for traveling distance 
+fit.loess_p<-loess(Prob~Size+Distance,data=Prob, control=loess.control(surface='direct'),span=0.05,degree=2)
+      
+#expend grade and predict using the new grade 
+Sizenew <-particles$Size
+Distancenew<-seq(0.1,2,len=20)
+df <- expand.grid(Distance = Distancenew, Size = Sizenew) 
+df$Prob<- round(as.vector(predict(fit.loess_p,newdata=df)),2)
+df[df$Prob<0,]$Prob<-0
+df[df$Prob>1,]$Prob<-1
+      
+      
+#prediction model for final size 
+fit.loess_f<-loess(frac~Size+Distance,data=Prob, control=loess.control(surface='direct'),span=0.05,degree=2)
+      
+#expend grade and predict using the new grade 
+df$Frac<- round(as.vector(predict(fit.loess_f,newdata=df)),2)
+#replace the out of range data 
+if (sum(df$Frac<0)>0) {
+     df[df$Frac<0,]$Frac<-0
+}
+if (sum(df$Frac>1)>0) { 
+     df[df$Frac>1,]$Frac<-1
+}
+# outof range- final size will not be smaller than 0.32    
+df$Frac[df$Frac<0.32 & df$Prob>0.1]=0.32
+
+      
+#save data in a list  for plot 
+DistanceFrac[[speed]]<-df
+      prob[[speed]]<-Prob[Prob$Size<420,]
+      
+      #save plots 
+      z <- reshape(df[df$Size<=420,1:3], v.names = "Prob", idvar = "Size",  timevar = "Distance", direction = "wide")
+      z_Distance[[speed]]<-as.matrix(z[,2:21])
+      plotsDistance[[speed]]<- plot_ly(y=~Sizenew ,x=~Distancenew, z=~z_Distance[[speed]],  scene ='scene1') %>%       
+            add_surface(colorbar=list(title="Smoothed probability"), showscale=FALSE) %>% 
+            add_trace( y=prob[[speed]]$Size, x=prob[[speed]]$Distance, z = prob[[speed]]$Prob, mode = "markers", type = "scatter3d", 
+                  marker = list(color = "red", symbol = 5,size=5), showlegend=FALSE,legendgroup="simulated") 
+      
+      # fraction plot 
+      z <- reshape(df[df$Size<=420,c(1,2,4)], v.names = "Frac", idvar = "Size",  timevar = "Distance", direction = "wide")
+      z_Frac[[speed]]<-as.matrix(z[,2:21])
+      plotsFrac[[speed]]<-plot_ly(y=~Sizenew ,x=~Distancenew, z=~ z_Frac[[speed]], scene = 'scene2' ) %>%
+            add_surface(colorbar=list(title="Smoothed probability"), showscale=FALSE) %>% 
+            add_trace(y=prob[[speed]]$Size, x=prob[[speed]]$Distance, z = prob[[speed]]$frac, mode = "markers", type = "scatter3d", 
+               marker = list(color = "red", symbol = 5,size=5), showlegend=FALSE,legendgroup="simulated") 
+```
+
+
+
+## Plot
+
+```{r,fig.width=8,fig.height=16,fig.align=TRUE}
+i=2
+p <- subplot(plotsDistance[["U5"]], plotsFrac[["U5"]], margin = 0.05) %>% 
+      layout(
+         scene = list(domain=list(x=c(0,1),y=c(0.5,1)),
+                      xaxis=list(title = "Distance (m)"), yaxis=list(title = "Size (µm)"), zaxis=list(title = "Probability"),
+                      aspectmode='cube'),
+         scene2 = list(domain=list(x=c(0,1),y=c(0,0.5)),
+                         xaxis=list(title = "Distance (m)"), yaxis=list(title = "Size (µm)"), zaxis=list(title = "Fraction"),
+                       aspectmode='cube')
+      )
+
+#add title 
+p  %>% layout(annotations = list(
+ list(x = 0 , y = 1, text = "A) Probability of a droplet traveling to a distance with speed of 5 m/s", showarrow = F, xref='paper', yref='paper', font = list( size = 16)),
+ list(x = 0 , y = 0.46, text = "B) Fraction of final size of a droplet traveling to a distance with speed of 5 m/s", showarrow = F, xref='paper', yref='paper', font = list( size = 16)))
+ 
+)
+
+
+```
+
+
+
+# Simulation
+
+Default input parameter 
+
+```{r}
+Input<-list(
+      #hours of person i in room 
+      Ti=10,
+      #hours of face to face contact between i and j
+      Tij=1,
+      #ventilation rate 
+      ACH=1,
+      # death rate in the air 
+      AirDeathRate=0.22,
+      # particle deposition 
+      AirDepRate=1,
+      # TCID50 at day 0 
+      TCID50=10^6.25,
+      # Room volume 
+      Volume=75,
+      # distance between people (m)
+      Distance="1", 
+      # initial speed of respiratory jet.
+      Speed="U5",
+      #largest droplet size containing virus
+      LargVirusDrop=50,
+      # dilution rate in large droplet 
+      LargeDropDilute=0.05,
+      # cutoff size for airborne route 
+      SizeAirborne=5,
+      # exposure to airborne routedose effect
+      AirDoseEffect= 1.0,
+      # exposure to direct inhalation dose effect
+      InhDoseEffect= 0.1,
+      # exposure to mucous membranes dose effect 
+      MemDoseEffect=0.01,
+      # frequency of touching droplet contaminated non-porous surface 
+      TouchDropSurface=20,
+      # transmission rate between hands and surfaces
+      TransHandSurface=0.08,
+      # transmission rate between hands and mucous membranes
+      TransHandMucous=0.35,
+      # virus death rate per hour on non-porous surfaces
+      SurfaceDeathRate=0.18,
+      # virus death rate per hour on hand
+      HandDeathRate=12,
+      # frequency of touching hand contaminated non-porous surface
+      TouchHandSurface=20,
+      # frequency of hand of individual touching the mucous membranes
+      TouchMucous=5,
+      # Virus dilution rate in the nasal mucus
+      NasalDilute=0.1,
+      # transmission rate between hand and hand 
+      TransHandHand=0.08,
+      # frequency of shaking hand
+      TouchHand=1
+)
+```
+
+
+
+## Exposure dose due to long-range airborne route
+
+
+
+$$
+D_{la}^k = \frac{{\pi pt_i^k}}{6V^k\left( {ACH^k + {\chi _a} + \chi_d} \right)}\mathop \sum \limits_{j = 1}^{{N_k}} \mathop \smallint \limits_0^{{d_a}} {d_0}^3G\left( {{d_0}} \right)E\left( {{d_r}} \right)L\left( j,T \right)d{d_r} \\
+	=\frac{3.14*0.48*ti}{\text{6*Volume}(\text{ACH}+\text{AirDeathRate+AirDepRate})}\mathop \sum \limits_{j = 1}^{{N_k}} \mathop \smallint \limits_0^{{d_a}} {d_0}^3G\left( {{d_0}} \right)E\left( {{d_r}} \right)\text{TCID50}d{d_r}
+$$
+
+
+```{r}
+LongAirborne<-function(particles,Input){
+      #tcid unit ml to m3
+      con=3.14*0.48*Input$Ti*Input$TCID50*10^6/(6*Input$Volume*(Input$ACH+Input$AirDeathRate+Input$AirDepRate))
+      #calculate counts of airborne particles and final size 
+      longairbornep<- particles %>%
+            # cube term 
+            mutate(d3=Size^3) %>% 
+            #calculate final size for airborne particles 
+            mutate(FinalSize=Size*0.325) %>% 
+            #counts for airborne particles
+            mutate(Reached_count=ifelse(FinalSize<Input$SizeAirborne,count,0))
+      
+      #predict of respiratory deposition
+      longairbornep$RespiratoryDep<-predict(deposition_fit,newdata=longairbornep)
+      #prediction out side of range fix 
+      longairbornep[longairbornep$FinalSize>=100, ]$RespiratoryDep<-0
+      #calculat total volumne, add constant and convert volumn to m3
+      volumn=sum(longairbornep$d3*longairbornep$Reached_count*longairbornep$RespiratoryDep)*con/10^18
+      #return
+      volumn*Input$AirDoseEffect
+}
+
+1-exp(-LongAirborne(particles,Input))
+```
+
+
+## Exposure dose to short-range airborne route 
+
+
+$$
+D_{sa}^{k,j} = \frac{{\pi \Delta t_{i,j}^kR_0}}{{6{{\left( {{s_{i,j}}tg\left( {\frac{\alpha }{2}} \right) + {R_0}} \right)}}}}\mathop \smallint \limits_0^{{d_a}} G\left( {{d_0}} \right)E\left( {{d_r}} \right)d_0^3L\left( {j,T}  \right)  d{d_r} \\
+ = \frac{{3.14 *Tij*{I_j}*0.01}}{{6{{\left( {Distance*0.2217 + 0.01} \right)}}}} \text{TCID50}\mathop \smallint \limits_0^{{d_a}} G\left( {{d_0}} \right)E\left( {{d_r}} \right)d_0^3d{d_r}
+$$
+
+
+
+```{r}
+ShortAirborne<-function(particles,Input){
+      #tcid unit ml to m3
+      con=3.14*Input$Tij*Input$TCID*10^6*0.01/(6*(as.numeric(Input$Distance)* 0.2216947+0.01)) 
+      #Traval distance and size 
+      df<-DistanceFrac[[Input$Speed]]
+      df<-df[as.character(df$Distance)==as.character(Input$Distance),]
+      #calculate counts of airborne particles and final size 
+      shortairbornep<- particles %>%
+            # cube term 
+            mutate(d3=Size^3) %>% 
+            left_join(df,by="Size") %>% 
+            #calculate final size for airborne particles 
+            mutate(FinalSize=Size*Frac) %>% 
+            #counts for airborne particles
+            mutate(Reached_count=ifelse(FinalSize<Input$SizeAirborne,count,0)*Prob)
+           
+      
+      #predict of respiratory deposition
+      shortairbornep$RespiratoryDep<-predict(deposition_fit,newdata=shortairbornep)
+      #prediction out side of range fix 
+      shortairbornep[shortairbornep$FinalSize>=100, ]$RespiratoryDep<-0
+      #calculat total volumne, add constant and convert volumn to m3
+      volumn=sum(shortairbornep$d3*shortairbornep$Reached_count*shortairbornep$RespiratoryDep)*con/10^18
+      # return
+      volumn*Input$AirDoseEffect
+}
+
+1-exp(-ShortAirborne(particles,Input))
+
+```
+
+
+## Exposure dose to direct inhalation of medium droplets or droplet nuclei
+
+$$
+D_{in}^{k,j} = \frac{{\pi \Delta t_{i,j}^kR_0}}{{6{{\left( {{s_{i,j}}tg\left( {\frac{\alpha }{2}} \right) + {R_0}} \right)}}}}\mathop \smallint \limits_{{d_a}}^{{d_{b,{\rm{max}}}}} P\left( {{d_0},{s_{i,j}},{\rm{U}}} \right)G\left( {{d_0}} \right)E\left( {{d_b}} \right)d_0^3L\left( j,T \right) \xi_{dd}(d_o )d{d_b} \\
+= \frac{{3.14 * \text{Tij}*0.01}}{{6{{\left( {\text{Distance}*0.2217 + 0.01} \right)}}}} \mathop \smallint \limits_{{d_a}}^{{d_{b,{\rm{max}}}}} P\left( {{d_0},{s_{i,j}},{\rm{U}}} \right)G\left( {{d_0}} \right)E\left( {{d_b}} \right)d_0^3 \text{TCID50}\text{*LargeDropDilute}*d{d_b} \\
+$$
+```{r}
+DirectInhal<-function(particles,Input){
+      #tcid unit ml to m3
+      con=3.14*Input$Tij*Input$TCID50*10^6*0.01/(6* (as.numeric(Input$Distance)* 0.2216947+0.01)) 
+      #Traval distance 
+      df<-DistanceFrac[[Input$Speed]]
+      df<-df[as.character(df$Distance)==as.character(Input$Distance),]
+      #calculate probability of travling to the distance and final size 
+      DirectInhalp<- particles %>%
+            # cube term 
+            mutate(d3=Size^3) %>% 
+            left_join(df,by="Size") %>% 
+            #counts reaching the distance  
+            mutate(Reached_count=count*Prob, FinalSize=Size*Frac) %>%
+            #exclude airborne particles
+            mutate(Reached_count=ifelse(FinalSize>=Input$SizeAirborne,Reached_count,0)) %>% 
+            #account for that larger droplets may not contain much virus 
+            mutate(ProbVirsu=ifelse(Size<Input$LargVirusDrop,1,Input$LargeDropDilute))
+
+      #predict on respiratory deposition
+      DirectInhalp$RespiratoryDep<-predict(deposition_fit,newdata=DirectInhalp)
+      #prediction out side of range fix 
+      DirectInhalp[DirectInhalp$Size>=100, ]$RespiratoryDep<-0
+      #calculat total volumne add constant and convert volumn to m3
+      volumn=sum(DirectInhalp$d3*DirectInhalp$Reached_count*DirectInhalp$RespiratoryDep*DirectInhalp$ProbVirsu)*con/10^18
+       #return
+      volumn*Input$InhDoseEffect
+
+}
+
+1-exp(-DirectInhal(particles,Input))
+```
+
+
+
+
+
+## Exposure dose due to direct deposition in the mucous membranes 
+
+
+$$
+D_d^{k,j} = \frac{{\Delta t_{i,j}^k{A_m}}}{{6{{\left( {{s_{i,j}}tg\left( {\frac{\alpha }{2}} \right) + {R_0}} \right)}^2}}}\mathop \smallint \limits_0^\infty  G\left( {{d_0}} \right)L\left( j,T \right)d_0^3P\left( {{d_0},{s_{i,j}}{\rm{U}}} \right) \xi_{dd}(d_o ) d{d_0} \\
+=\frac{{\text{Tij}*0.001}}{{6{{\left( {\text{Distance}*0.2217 + 0.01} \right)}^2}}} \text{TCID50}\mathop \smallint \limits_0^\infty  G\left( {{d_0}} \right)d_0^3P\left( {{d_0},{s_{i,j}}{\rm{U}}} \right) \xi_{dd}(d_o )d{d_0}
+$$
+
+
+
+```{r}
+DirectDep<-function(particles,Input){
+      #tcid unit ml to m3
+      con=Input$Tij*Input$TCID50*10^6*0.001/(6*(as.numeric(Input$Distance)*0.2216947+0.01)^2);
+      #Traval distance 
+      df<-DistanceFrac[[Input$Speed]]
+      df<-df[as.character(df$Distance)==as.character(Input$Distance),]
+      #calculate probability of travling to the distance and final size 
+      DirectDepp<- particles %>%
+            # cube term 
+            mutate(d3=Size^3) %>% 
+            left_join(df,by="Size") %>% 
+            #counts reaching the distance  
+            mutate(Reached_count=count*Prob, Final_size=Size*Frac) %>%
+            #account for that larger droplets may not contain much virus 
+            mutate(ProbVirsu=ifelse(Size<Input$LargVirusDrop,1,Input$LargeDropDilute))
+
+      #calculat total volumne add constant and convert volumn to m3
+      volumn=sum(DirectDepp$d3*DirectDepp$Reached_count*DirectDepp$ProbVirsu)*con/10^18
+      #return
+      volumn*Input$MemDoseEffect
+
+}
+
+1-exp(-DirectDep(particles,Input))
+```
+
+## Exposure dose due to hand surface contact
+
+$$
+D_hs^k = \left( {C_{hds}^k + C_{hhs}^k } \right){A_{hm}}{f_{hm}}t_i^k{\eta _{hm}} \\
+=  \left( {C_{hds}^k + C_{hhs}^k } \right)*0.0001*\text{TouchMucous*Ti*TransHandMucous}
+$$
+
+Also
+
+$$ 
+C_{hds}^k = \frac{{\pi}f_{hds}^k\eta _{hs}}{{6A_{dc}^k{\chi _{s}}\chi _h}}{\mathop \sum \nolimits_{j = 1}^{{N_k}}  \left( {\frac{{\chi_d{}}}{{{ACH^k} + {\chi _a}+ \chi_d}}\mathop \smallint \nolimits_0^{{d_a}} G\left( {{d_0}} \right)L\left( j,T \right)d_0^2d{d_r} + \mathop \smallint \nolimits_{{d_a}}^\infty  G\left( {{d_0}} \right)L\left( j,T \right)d_0^3\xi_{dd}(d_0)d{d_b}} \right)}  \\  =\frac{3.14* \text{TouchDropSurface*TransHandSurface}}{6*25*\text{SurfaceDeathRate*HandDeathRate}} \mathop \sum \nolimits_{j = 1}^{{N_k}}  \text{TCID50} \\\left(  \frac{AirDepRate}{\text{ACH}+\text{AirDeathRate+AirDepRate}} \mathop \smallint \limits_0^{{d_a}} {d_0}^3G\left( {{d_0}} \right)d{d_r}  + \smallint \nolimits_{{d_a}}^\infty  G\left( {{d_0}} \right)d_0^3\xi_{dd}(d_0)d{d_b} \right)
+$$
+
+
+
+
+And
+
+$$
+C_{hhs}^k = \frac{{{{\left( {f_{hhs}^k{\eta _{hs}}} \right)}^2}}} {{A_{sh}^k}{\chi_{s}}{\chi_{h}^2}}\mathop \sum \limits_{j = 1}^{{N_k}}f_{hm}V_{mh}\xi_{dm}L(T)I_j \\=\frac{{{{\left( \text{TouchHandSurface*TransHandSurface} \right)}^2}}}{{1.25*\text{SurfaceDeathRate}*\text{HandDeathRate}^2}}\mathop \sum \limits_{j = 1}^{{N_k}} \text{TouchMucous}\text{TCID50*0.01*NasalDilute}*I_j
+$$
+
+
+
+
+
+```{r}
+HandSurface<-function(particles,Input){
+      #constant for Dhs
+      con=0.0001*Input$TouchMucous*Input$Ti*Input$TransHandMucous
+      #constance for Chds
+      con1=3.14*Input$TouchDropSurface*Input$TransHandSurface/(6*25*Input$SurfaceDeathRate*Input$HandDeathRate)*Input$TCID50*10^6
+      #constance for airborne particles
+      ConAirborne=Input$AirDepRate/(Input$ACH+Input$AirDeathRate+Input$AirDepRate)
+      #constance for large droplets % droplets carry virus
+      ConDrop=Input$LargeDropDilute
+      
+      #calculate airborne/droplet deposition 
+      HandSurface1<- particles %>%
+            # cube term 
+            mutate(d3=Size^3) %>% 
+            #calculate final size for airborne particles 
+            mutate(Airborne_final=Size*0.325) %>% 
+            # add constant
+            mutate(Reached_count=ifelse(Airborne_final<Input$SizeAirborne,count*ConAirborne,count*ConDrop))
+
+      #calculat total volumne add constant and convert volumn to m3
+      HandSurface1=sum(HandSurface1$d3*HandSurface1$Reached_count)*con1/10^18
+      
+      #calculate hand contamination
+      HandSurface2<-(Input$TouchHandSurface*Input$TransHandSurface)^2*Input$TouchMucous*(Input$TCID50*0.01)*Input$NasalDilute/(1.25*Input$SurfaceDeathRate*Input$HandDeathRate^2)
+      
+      #add up
+      all=con*(HandSurface1+HandSurface2)
+      #return
+      all*Input$MemDoseEffect
+      
+}
+
+1-exp(-HandSurface(particles,Input))
+```
+
+
+## Exposure does due to hand-hand contact
+
+
+
+$$
+d_{hh}^k = \frac{A_{hm} f_{hm} t_{i,j}^k  \eta_{hm} \eta_{hh}}{{A_h}{\chi_{h}^2}}\mathop \sum \limits_{j = 1,j \ne i}^{{N_k}} f_{hh}^{i,i}{I_j}f_{hm}V_{hm}\xi_{dm}L(T) \\
+= \frac{0.0001*\text{TouchMucous}*\text{Tij * TransHandMucous* TransHandMucous}}{0.001*\text{HandDeathRate}^2} \mathop \\
+\sum \limits_{j = 1,j \ne i}^{{N_k}}\text{TouchHand*TouchMucous*} \text{TCID50*0.01*NasalDilute}*I_j 
+$$
+
+```{r}
+HandHand<-function(Input){
+      HandHandp=(0.0001*Input$TouchMucous*Input$Tij*Input$TransHandMucous*Input$TransHandMucous)/(0.001*Input$HandDeathRate^2)*Input$TouchHand*Input$TouchMucous*Input$TCID50*0.01*Input$NasalDilute
+      HandHandp*Input$MemDoseEffect
+}
+1-exp(-HandHand(Input))
+```
+
+## All exposure 
+
+```{r}
+All_individual<-function(particles,Input){
+  results<-data.frame(Route=c("Long-range airborne",
+                              "Short-range airborne",
+                              "Direct inhalation",
+                              "Direct deposition",
+                              "Hand-surface contact",
+                              "Hand-hand contact",
+                               "Over all"))
+  results$Dose<-c(LongAirborne(particles,Input),
+                  ShortAirborne(particles,Input),
+                  DirectInhal(particles,Input),
+                  DirectDep(particles,Input),
+                  HandSurface(particles,Input),
+                  HandHand(Input),
+                  NA)
+  Total<-sum(results$Dose,na.rm = T)
+  results[7,"Dose"]<-Total
+  results$ContributionRatio<-results$Dose/Total
+  results$InfectionRisk<-1-exp(-results$Dose) 
+  results 
+} 
+
+All_individual(particles,Input)
+
+
+All<-function(particles,Input){
+  
+  LongAirbornep=LongAirborne(particles,Input)
+  ShortAirbornep= ShortAirborne(particles,Input)
+  DirectInhalp= DirectInhal(particles,Input)
+  DirectDepp=DirectDep(particles,Input)
+  HandSurfacep=HandSurface(particles,Input)
+  HandHandp=HandHand(Input)
+  results<-1-exp(-LongAirbornep-ShortAirbornep-DirectInhalp-DirectDepp-HandSurfacep-HandHandp)
+  results
+} 
+
+All(particles,Input)
+```
+
+
+# Results
+
+
+## Figure 2 Multi-route comparison 
+
+```{r,fig.width=10,fig.height=10}
+
+Input_1<-Input
+Input_1$InhDoseEffect=1 
+Input_1$MemDoseEffect=1 
+Input_1$NasalDilute=1
+results_1<-All_individual(particles,Input_1)
+results_1$Type="Contact transmission dominant"
+results_1$Index="(F)"
+
+
+Input_1<-Input
+Input_1$LargeDropDilute=1
+Input_1$MemDoseEffect=1 
+results_2<-All_individual(particles,Input_1)
+results_2$Type="Direct deposation dominant"
+results_2$Index="(E)"
+
+
+Input_1<-Input
+Input_1$InhDoseEffect=1 
+results_3<-All_individual(particles,Input_1)
+results_3$Type="Direct inhalation dominant"
+results_3$Index="(D)"
+
+
+Input_1<-Input
+Input_1$LargVirusDrop=30
+Input_1$Ti=1
+results_4<-All_individual(particles,Input_1)
+results_4$Type="Short-range airborne dominant"
+results_4$Index="(C)"
+
+Input_1<-Input
+Input_1$Tij=0.5
+Input_1$ACH=0.5
+results_5<-All_individual(particles,Input_1)
+results_5$Type="Long-range airborne dominant"
+results_5$Index="(B)"
+
+Input_1<-Input
+results_6<-All_individual(particles,Input_1)
+results_6$Type="Default parameters"
+results_6$Index="(A)"
+
+
+results<-rbind(results_1,results_2,results_3,results_4,results_5,results_6) %>% 
+  mutate(Type=factor(Type,levels=c("Default parameters",
+                                   "Long-range airborne dominant",
+                                   "Short-range airborne dominant",
+                                   "Direct inhalation dominant",
+                                   "Direct deposation dominant",
+                                   "Contact transmission dominant"))) %>% 
+  group_by(Type) %>% 
+  mutate(TotalRisk=round(max(InfectionRisk),2))
+
+temp<-results %>% 
+  filter(Route!= "Over all" ) %>% 
+    mutate(Route=factor(Route,levels=c("Long-range airborne",
+                                     "Short-range airborne",
+                                     "Direct inhalation",
+                                     "Direct deposition",
+                                     "Hand-surface contact",
+                                     "Hand-hand contact"),
+                            labels=c("Long-range\n airborne",
+                                     "Short-range\n airborne",
+                                     "Direct\n inhalation",
+                                     "Direct\n deposition",
+                                     "Hand-surface\n contact",
+                                     "Hand-hand\n contact"))) 
+ggplot(temp) +
+  geom_col(aes(x=Route,y=ContributionRatio,fill=factor(TotalRisk)),position = position_dodge(preserve = 'single'),lwd=1)+
+  labs( x= "Transmission route", y="Contribution", fill="Total infection risk")+
+  theme_bw() +
+  facet_wrap(~Type,nrow=3) + 
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  #scale_fill_manual(values=c('#fff7ec', '#fdd49e','#fdbb84','#fc8d59','#e34a33', '#b30000'))  +
+  #scale_fill_manual(values=c('#fee5d9', '#fcbba1','#fc9272','#fb6a4a','#de2d26', '#a50f15'))  +
+  # scale_fill_manual(values=c('#fdd49e', '#fc8d59','#ef6548','#d7301f','#b30000', '#7f0000'))  +
+  #scale_fill_manual(values=c( '#fed976', '#feb24c',  '#fd8d3c', '#fc4e2a','#e31a1c','#bd0026')) +
+  scale_fill_manual(values=c( "#9ecae1", "#6baed6", "#4292c6", "#2171b5", "#08519c", "#08306b")) +
+  theme(legend.position="bottom", 
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=12),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text.x = element_text(size = 12), 
+        strip.background = element_blank(),
+        panel.border = element_rect(colour = "black"))+
+  guides(fill = guide_legend(nrow = 1))  +
+  geom_text(aes(label = Index, x=0.7, y=0.8)) 
+
+
+  
+```
+
+
+
+
+```{r,fig.width=6,fig.height=4}
+
+Input_1<-Input
+Input_1$InhDoseEffect=1 
+Input_1$MemDoseEffect=1 
+Input_1$NasalDilute=1
+Input_1$LargeDropDilute=1
+Input_1$LargVirusDrop=2000
+results<-All_individual(particles,Input_1)%>% 
+  mutate(TotalRisk=round(max(InfectionRisk),2))
+
+temp<-results %>% 
+  filter(Route!= "Over all" ) %>% 
+    mutate(Route=factor(Route,levels=c("Long-range airborne",
+                                     "Short-range airborne",
+                                     "Direct inhalation",
+                                     "Direct deposition",
+                                     "Hand-surface contact",
+                                     "Hand-hand contact"),
+                            labels=c("Long-range\n airborne",
+                                     "Short-range\n airborne",
+                                     "Direct\n inhalation",
+                                     "Direct\n deposition",
+                                     "Hand-surface\n contact",
+                                     "Hand-hand\n contact"))) 
+ggplot(temp) +
+  geom_col(aes(x=Route,y=ContributionRatio),fill= "#08519c",position = position_dodge(preserve = 'single'),lwd=1)+
+  labs( x= "Transmission route", y="Contribution", fill="Total infection risk")+
+  theme_bw() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme(legend.position="bottom", 
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=12),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text.x = element_text(size = 12), 
+        strip.background = element_blank(),
+        panel.border = element_rect(colour = "black"))
+
+
+  
+```
+
+## Table 2 Particle size 
+
+```{r}
+da<-c(5,10)
+dg<-c(30,50,100,200,500,2000)
+dis<-c("0.5","1","1.5")
+
+
+# loop distance 
+for(d in 1:length(dis)){
+  Input_1<-Input
+  table<-matrix(rep(NA,length(da)*length(dg)),ncol=length(dg))
+  Input_1$Distance=dis[d]
+  for(a in 1:length(da)){
+    for(g in 1:length(dg)){
+      Input_1$SizeAirborne=da[a]
+      Input_1$LargVirusDrop=dg[g]
+      table[a,g]<-All(particles,Input_1)
+    }
+  }
+  if (d==1) {
+    table1=table
+  }else {
+    table1=rbind(table1,table)
+  }
+}
+
+table<-data.frame(cbind(a=rep(da,2),round(table1,2)))
+names(table)<-c("Cut-off size for airborne route",	
+                "30", "50", "100",	"200", "500", "All")
+
+knitr:: kable(table,align=c('l', 'r', "r",'r','r', "r"), 
+                     caption = "Table 2", format = "html") %>%
+    kable_styling(bootstrap_options = "striped",  full_width = F) %>% 
+    add_header_above(header = c(" " = 1, "Largest virus-containing droplet size "=6)) %>% 
+    column_spec(1,width="3cm")  %>% 
+    pack_rows("Exposure distance 0.5 m ", 1, 2, label_row_css = "background-color: #666; color: #fff;") %>% 
+    pack_rows("Exposure distance 1 m ", 3, 4, label_row_css = "background-color: #666; color: #fff;") %>% 
+    pack_rows("Exposure distance 1.5 m ", 5, 6, label_row_css = "background-color: #666; color: #fff;") 
+
+
+```
+
+##  Figure 3 Effect of distance
+
+```{r,fig.width=8,fig.h=5}
+Input_1<-Input
+dis= c( "0.5", "0.6", "0.7", "0.8", "0.9", "1","1.1", "1.2","1.3", "1.4","1.5"  )
+for (d in 1:length(dis)){
+  Input_1<-Input
+  Input_1$Distance=dis[d] 
+  result<-All_individual(particles,Input_1)
+  result$Distance=dis[d]
+  if(d==1) {
+    results=result
+  } else{
+    results<-rbind(results,result)
+  }
+  
+}
+temp<-results %>% 
+  group_by(Distance) %>% 
+  mutate(`Total Risk`=round(max(InfectionRisk),2)) %>% 
+  filter( Route!= "Over all" ) %>% 
+  mutate(Route=factor(Route,levels=c("Long-range airborne",
+                                     "Short-range airborne",
+                                     "Direct inhalation",
+                                     "Direct deposition",
+                                     "Hand-surface contact",
+                                     "Hand-hand contact")))
+
+ggplot(temp) +
+  geom_bar(aes(x=Distance,y=ContributionRatio,fill=factor(Route)), 
+           position="stack", stat="identity")+
+  labs( x= "Exposure Distance (m)" ,fill="Transmission route", y="Contribution",
+        fill="Exposure Distance (m)")+
+  theme_bw()+
+  theme(legend.position="bottom") +
+  scale_fill_manual(values=c("#feebe2","#fcc5c0","#fa9fb5","#f768a1","#c51b8a", "#7a0177"))+
+  guides(col = guide_legend(nrow = 1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1))  +
+  geom_text(aes(label = `Total Risk`, x=Distance, y=1.07),size=3) +
+  geom_text(label="Total risk",x = -0.08, y = 1.07, size=3) +
+  coord_cartesian(xlim = c(1, 11),  clip = 'off') +  
+      theme(plot.margin = unit(c(1,3,1,1), "lines"))
+  
+```
+
+
+## Figure 4 Effect of ACH
+
+```{r}
+Input_1<-Input
+Input_1$Tij=0.5
+Input_1$ACH=0.1
+results<-All_individual(particles,Input_1)
+results$ACH=0.1
+for (ach in c(0.2,0.3,0.4, 0.5, 1:10)){
+  Input_1<-Input
+  Input_1$ACH=ach
+  Input_1$Tij=0.5
+  result<-All_individual(particles,Input_1)
+  result$ACH=ach
+  results<-rbind(results,result)
+}
+
+temp<-results %>% 
+  mutate(Route=ifelse(Route=="Long-range airborne"|Route=="Over all",as.character(Route),"Other routes")) %>% 
+  group_by(Route,ACH) %>%
+  summarise(Dose=sum(Dose)) %>% 
+  mutate("Infection Risk"=1-exp(-Dose))
+  
+
+ggplot(temp) +
+  geom_line(aes(x=ACH,y=`Infection Risk`,col=Route,linetype=Route),size=1) +
+  theme_bw() +
+  scale_linetype_manual(values=c("twodash","dotted","solid")) +
+  scale_color_manual(values=c('#d7301f','#fc8d59','#7f0000')) +
+  theme(legend.position="bottom") +
+  labs(col="Transmission route",linetype="Transmission route") +
+  scale_x_continuous(breaks=c(0:10)) 
+  
+
+```
+
+
+##  Figure 5 Dose effect of membranes transmission 
+
+```{r,fig.width=12,fig.h=8}
+
+# no dilution of 
+does= c(0.001, 0.01, 0.1, 1)
+for (d in 1:length(does)){
+  Input_1<-Input
+  Input_1$NasalDilute=1
+  Input_1$MemDoseEffect=does[d] 
+  result<-All_individual(particles,Input_1)
+  result$Distance=does[d]
+  if(d==1) {
+    results1=result
+  } else{
+    results1<-rbind(results1,result)
+  }
+  
+}
+
+results1$dilution="No virus dilution in nasal discharge"
+results1$Index="(A)"
+
+does= c(0.001, 0.01, 0.1, 1)
+for (d in 1:length(does)){
+  Input_1<-Input
+  Input_1$NasalDilute=0.1
+  Input_1$MemDoseEffect=does[d] 
+  result<-All_individual(particles,Input_1)
+  result$Distance=does[d]
+  if(d==1) {
+    results2=result
+  } else{
+    results2<-rbind(results2,result)
+  }
+}
+
+results2$dilution="Virus dilution rate of 0.1 in nasal discharge"
+results2$Index="(B)"
+
+
+temp<-rbind(results1, results2) %>% 
+  filter( Route!= "Over all" ) %>% 
+  mutate(Route=factor(Route,levels=c("Long-range airborne",
+                                     "Short-range airborne",
+                                     "Direct inhalation",
+                                     "Direct deposition",
+                                     "Hand-surface contact",
+                                     "Hand-hand contact"),
+                            labels=c("Long-range\n airborne",
+                                     "Short-range\n airborne",
+                                     "Direct\n inhalation",
+                                     "Direct\n deposition",
+                                     "Hand-surface\n contact",
+                                     "Hand-hand\n contact"))) 
+
+ggplot(temp) +
+  geom_col(aes(x=Route,y=ContributionRatio,col=factor(Distance),fill=factor(Distance)),position = position_dodge(preserve = 'single'))+
+  labs( x= "Transmission route", y="Contribution",col="Dose-response coefficient of membrane exposure",
+        fill="Dose-response coefficient of membrane exposure")+
+  theme_bw() +
+  facet_wrap(~dilution) +
+  scale_color_manual(values=c('#b30000','#e34a33','#fc8d59','#fdbb84')) +
+  scale_fill_manual(values=c('#b30000','#e34a33','#fc8d59','#fdbb84')) +
+  theme(legend.position="bottom") +
+  guides(col = guide_legend(nrow = 1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme(legend.position="bottom", 
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=12),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text.x = element_text(size = 12), 
+        strip.background = element_blank(),
+        panel.border = element_rect(colour = "black"))+
+  guides(fill = guide_legend(nrow = 1))  +
+  geom_text(aes(label = Index, x=0.7, y=0.7)) 
+
+  
+```
+
+##  Figure 6 Dose effect of direct inhalation transmission 
+
+```{r,fig.width=12,fig.h=8}
+
+# no dilution of 
+does= c(0.001, 0.01, 0.1, 1)
+for (d in 1:length(does)){
+  Input_1<-Input
+  Input_1$LargVirusDrop=30
+  Input_1$InhDoseEffect=does[d] 
+  result<-All_individual(particles,Input_1)
+  result$Distance=does[d]
+  if(d==1) {
+    results1=result
+  } else{
+    results1<-rbind(results1,result)
+  }
+  
+}
+
+results1$dilution="Largest high viral-load droplets with diameter 30 (µm)"
+results1$Index="(A)"
+
+does= c(0.001, 0.01, 0.1, 1)
+for (d in 1:length(does)){
+  Input_1<-Input
+  Input_1$LargVirusDrop=100
+  Input_1$InhDoseEffect=does[d] 
+  result<-All_individual(particles,Input_1)
+  result$Distance=does[d]
+  if(d==1) {
+    results2=result
+  } else{
+    results2<-rbind(results2,result)
+  }
+}
+
+results2$dilution="Largest high viral-load droplets with diameter 100 (µm)"
+results2$Index="(B)"
+
+temp<-rbind(results1, results2) %>% 
+  filter( Route!= "Over all" ) %>% 
+  mutate(Route=factor(Route,levels=c("Long-range airborne",
+                                     "Short-range airborne",
+                                     "Direct inhalation",
+                                     "Direct deposition",
+                                     "Hand-surface contact",
+                                     "Hand-hand contact"),
+                            labels=c("Long-range\n airborne",
+                                     "Short-range\n airborne",
+                                     "Direct\n inhalation",
+                                     "Direct\n deposition",
+                                     "Hand-surface\n contact",
+                                     "Hand-hand\n contact"))) %>% 
+  mutate(dilution=factor(dilution,levels=c("Largest high viral-load droplets with diameter 30 (µm)","Largest high viral-load droplets with diameter 100 (µm)")))
+
+ggplot(temp) +
+  geom_col(aes(x=Route,y=ContributionRatio,col=factor(Distance),fill=factor(Distance)),position = position_dodge(preserve = 'single'))+
+  labs( x= "Transmission route", y="Contribution",col="Dose-response coefficient of inhalation exposure",
+        fill="Dose-response coefficient of inhalation exposure")+
+  theme_bw() +
+  facet_wrap(~dilution) +
+  scale_color_manual(values=c('#addd8e','#78c679','#31a354',"#006837")) +
+  scale_fill_manual(values=c('#addd8e','#78c679','#31a354',"#006837")) +
+  theme(legend.position="bottom") +
+  guides(col = guide_legend(nrow = 1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    theme(legend.position="bottom", 
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=12),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text.x = element_text(size = 12), 
+        strip.background = element_blank(),
+        panel.border = element_rect(colour = "black"))+
+  guides(fill = guide_legend(nrow = 1))  +
+  geom_text(aes(label = Index, x=0.7, y=0.7)) 
+
+  
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
