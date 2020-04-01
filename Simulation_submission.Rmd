@@ -595,8 +595,8 @@ DirectInhal<-function(particles,Input){
 
 
 $$
-D_d^{k,j} = \frac{{\Delta t_{i,j}^k{A_m}}}{{6{{\left( {{s_{i,j}}tg\left( {\frac{\alpha }{2}} \right) + {R_0}} \right)}^2}}}\mathop \smallint \limits_0^\infty  G\left( {{d_0}} \right)L\left( j,T \right)d_0^3P\left( {{d_0},{s_{i,j}}{\rm{U}}} \right) \xi_{dd}(d_o ) d{d_0} \\
-=\frac{{\text{Tij}*0.001}}{{6{{\left( {\text{Distance}*0.2217 + 0.01} \right)}^2}}} \text{TCID50}\mathop \smallint \limits_0^\infty  G\left( {{d_0}} \right)d_0^3P\left( {{d_0},{s_{i,j}}{\rm{U}}} \right) \xi_{dd}(d_o )d{d_0}
+D_d^{k,j} = \frac{\Delta t_{i,j}^k A_m}{6 \left( s_{i,j} tg\left(\frac{\alpha }{2} \right) + R_0 \right) ^2} \mathop \smallint \limits_0^\infty  G\left( d_0 \right)L\left( j,T \right)d_0^3P\left(d_0,s_{i,j}\rm{U} \right) \xi_{dd} (d_o) d{d_0} \\
+=\frac{\text{Tij}*0.001}{6 \left(\text{Distance}*0.2217 + 0.01 \right)^2} \text{TCID50}\mathop \smallint \limits_0^\infty  G\left( d_0 \right)d_0^3P\left( d_0,s_{i,j}\rm{U} \right) \xi_{dd}(d_o)d{d_0}
 $$
 
 
@@ -631,15 +631,17 @@ DirectDep<-function(particles,Input){
 ## Exposure dose due to hand surface contact
 
 $$
-D_hs^k = \left( {C_{hds}^k + C_{hhs}^k } \right){A_{hm}}{f_{hm}}t_i^k{\eta _{hm}} \\
-=  \left( {C_{hds}^k + C_{hhs}^k } \right)*0.0001*\text{TouchMucous*Ti*TransHandMucous}
+D_hs^k = \left( {C_{hds}^k + C_{hhs}^k } \right)A_{hm}f_{hm}t_i^k\eta_{hm} \\
+=  \left(C_{hds}^k + C_{hhs}^k \right)*0.0001*\text{TouchMucous*Ti*TransHandMucous}
 $$
 
 Also
 
 $$ 
-C_{hds}^k = \frac{{\pi}f_{hds}^k\eta _{hs}}{{6A_{dc}^k{\chi _{s}}\chi _h}}{\mathop \sum \nolimits_{j = 1}^{{N_k}}  \left( {\frac{{\chi_d{}}}{{{ACH^k} + {\chi _a}+ \chi_d}}\mathop \smallint \nolimits_0^{{d_a}} G\left( {{d_0}} \right)L\left( j,T \right)d_0^2d{d_r} + \mathop \smallint \nolimits_{{d_a}}^\infty  G\left( {{d_0}} \right)L\left( j,T \right)d_0^3\xi_{dd}(d_0)d{d_b}} \right)}  \\  =\frac{3.14* \text{TouchDropSurface*TransHandSurface}}{6*25*\text{SurfaceDeathRate*HandDeathRate}} \mathop \sum \nolimits_{j = 1}^{{N_k}}  \text{TCID50} \\\left(  \frac{AirDepRate}{\text{ACH}+\text{AirDeathRate+AirDepRate}} \mathop \smallint \limits_0^{{d_a}} {d_0}^3G\left( {{d_0}} \right)d{d_r}  + \smallint \nolimits_{{d_a}}^\infty  G\left( {{d_0}} \right)d_0^3\xi_{dd}(d_0)d{d_b} \right)
+C_{hds}^k = \frac{{\pi}f_{hds}^k\eta_{hs}}{6A_{dc}^k \chi_{s} \chi_h} {\mathop \sum \nolimits_{j = 1}^{N_k}}  { \left(\frac{\chi_d}{ ACH^k + \chi_a+ \chi_d}\mathop \smallint \nolimits_0^{d_a} G\left( d_0 \right) L\left( j,T \right)d_0^2d{d_r} + \mathop \smallint \nolimits_{d_a}^\infty  G\left(d_0 \right)L\left( j,T \right)d_0^3\xi_{dd}(d_0)d{d_b} \right)} 
+\\  =\frac{3.14* \text{TouchDropSurface*TransHandSurface}}{6*25*\text{SurfaceDeathRate*HandDeathRate}} \mathop \sum \nolimits_{j = 1}^{N_k}  \text{TCID50} \\\left(  \frac{AirDepRate}{\text{ACH}+\text{AirDeathRate+AirDepRate}} \mathop \smallint \limits_0^{d_a} {d_0}^3G\left({d_0} \right)d{d_r}  + \smallint \nolimits_{d_a}^\infty  G\left( {d_0} \right)d_0^3\xi_{dd}(d_0)d{d_b} \right)
 $$
+
 
 
 
@@ -647,7 +649,9 @@ $$
 And
 
 $$
-C_{hhs}^k = \frac{{{{\left( {f_{hhs}^k{\eta _{hs}}} \right)}^2}}} {{A_{sh}^k}{\chi_{s}}{\chi_{h}^2}}\mathop \sum \limits_{j = 1}^{{N_k}}f_{hm}V_{mh}\xi_{dm}L(T)I_j \\=\frac{{{{\left( \text{TouchHandSurface*TransHandSurface} \right)}^2}}}{{1.25*\text{SurfaceDeathRate}*\text{HandDeathRate}^2}}\mathop \sum \limits_{j = 1}^{{N_k}} \text{TouchMucous}\text{TCID50*0.01*NasalDilute}*I_j
+C_{hhs}^k = \frac{{\left( {f_{hhs}^k{\eta _{hs}}} \right)}^2} {A_{sh}^k\chi_{s}\chi_{h}^2}\mathop \sum \limits_{j = 1}^{N_k}f_{hm}V_{mh}\xi_{dm}L(T)I_j 
+
+\\=\frac{{\left( \text{TouchHandSurface*TransHandSurface} \right)}^2}{1.25*\text{SurfaceDeathRate}*\text{HandDeathRate}^2}\mathop \sum \limits_{j = 1}^{N_k} \text{TouchMucous}\text{TCID50*0.01*NasalDilute}*I_j
 $$
 
 
@@ -696,9 +700,9 @@ HandSurface<-function(particles,Input){
 
 
 $$
-d_{hh}^k = \frac{A_{hm} f_{hm} t_{i,j}^k  \eta_{hm} \eta_{hh}}{{A_h}{\chi_{h}^2}}\mathop \sum \limits_{j = 1,j \ne i}^{{N_k}} f_{hh}^{i,i}{I_j}f_{hm}V_{hm}\xi_{dm}L(T) \\
+d_{hh}^k = \frac{A_{hm} f_{hm} t_{i,j}^k  \eta_{hm} \eta_{hh}}{ A_h \chi_{h}^2}\mathop \sum \limits_{j = 1,j \ne i}^{N_k} f_{hh}^{i,i}{I_j}f_{hm}V_{hm}\xi_{dm}L(T) \\
 = \frac{0.0001*\text{TouchMucous}*\text{Tij * TransHandMucous* TransHandMucous}}{0.001*\text{HandDeathRate}^2} \mathop \\
-\sum \limits_{j = 1,j \ne i}^{{N_k}}\text{TouchHand*TouchMucous*} \text{TCID50*0.01*NasalDilute}*I_j 
+\sum \limits_{j = 1,j \ne i}^{N_k}\text{TouchHand*TouchMucous*} \text{TCID50*0.01*NasalDilute}*I_j 
 $$
 
 ```{r}
