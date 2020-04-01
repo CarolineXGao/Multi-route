@@ -638,7 +638,7 @@ $$
 Also
 
 $$ 
-C_{hds}^k = \frac{{\pi}f_{hds}^k\eta_{hs}}{6A_{dc}^k \chi_{s} \chi_h} {\mathop \sum \nolimits_{j = 1}^{N_k}}  { \left(\frac{\chi_d}{ ACH^k + \chi_a+ \chi_d}\mathop \smallint \nolimits_0^{d_a} G\left( d_0 \right) L\left( j,T \right)d_0^2d{d_r} + \mathop \smallint \nolimits_{d_a}^\infty  G\left(d_0 \right)L\left( j,T \right)d_0^3\xi_{dd}(d_0)d{d_b} \right)} 
+C_{hds}^k = \frac{ \pi  f_{hds}^k\eta_{hs}}{6A_{dc}^k \chi_{s} \chi_h} {\mathop \sum \nolimits_{j = 1}^{N_k}}  { \left(\frac{\chi_d}{ ACH^k + \chi_a+ \chi_d}\mathop \smallint \nolimits_0^{d_a} G\left( d_0 \right) L\left( j,T \right)d_0^2d{d_r} + \mathop \smallint \nolimits_{d_a}^\infty  G\left(d_0 \right)L\left( j,T \right)d_0^3\xi_{dd}(d_0)d{d_b} \right)} 
 \\  =\frac{3.14* \text{TouchDropSurface*TransHandSurface}}{6*25*\text{SurfaceDeathRate*HandDeathRate}} \mathop \sum \nolimits_{j = 1}^{N_k}  \text{TCID50} \\\left(  \frac{AirDepRate}{\text{ACH}+\text{AirDeathRate+AirDepRate}} \mathop \smallint \limits_0^{d_a} {d_0}^3G\left({d_0} \right)d{d_r}  + \smallint \nolimits_{d_a}^\infty  G\left( {d_0} \right)d_0^3\xi_{dd}(d_0)d{d_b} \right)
 $$
 
