@@ -1,7 +1,7 @@
 ---
 title: 'Supplementary R code'
 subtitle: 'Multi-route route respiratory infection: when a transmission route may dominant'
-author: "Caroline X. Gao, Yuguo Li, Jianjian Wei, Sue Cotton, Matthew Hamilton, M Lei Wang, Hui-Ling Yen and Benjamin J. Cowling"
+author: "Caroline X. Gao, Yuguo Li, Jianjian Wei, Sue Cotton, Matthew Hamilton, Lei Wang and Benjamin J. Cowling"
 
 output:
   html_document:
@@ -649,9 +649,8 @@ $$
 And
 
 $$
-C_{hhs}^k = \frac{ \left( {f_{hhs}^k{\eta _{hs} } } \right)^2} {A_{sh}^k\chi_{s}\chi_{h}^2}\mathop \sum \limits_{j = 1}^{N_k}f_{hm}V_{mh}\xi_{dm}L(T)I_j 
-
-\\=\frac{ \left( \text{TouchHandSurface*TransHandSurface} \right) ^2}{1.25*\text{SurfaceDeathRate}*\text{HandDeathRate}^2}\mathop \sum \limits_{j = 1}^{N_k} \text{TouchMucous}\text{TCID50*0.01*NasalDilute}*I_j
+C_{hhs}^k = \frac{ \left( f_{hhs}^k \eta _{hs} \right)^2} {A_{sh}^k\chi_{s}\chi_{h}^2}\mathop \sum \limits_{j = 1}^{N_k}f_{hm}V_{mh}\xi_{dm}L(T)I_j 
+\\ =\frac{ \left( \text{TouchHandSurface*TransHandSurface} \right) ^2}{1.25*\text{SurfaceDeathRate}*\text{HandDeathRate}^2}\mathop \sum \limits_{j = 1}^{N_k} \text{TouchMucous}\text{TCID50*0.01*NasalDilute}*I_j
 $$
 
 
@@ -700,7 +699,7 @@ HandSurface<-function(particles,Input){
 
 
 $$
-d_{hh}^k = \frac{A_{hm} f_{hm} t_{i,j}^k  \eta_{hm} \eta_{hh} } { A_h \chi_{h}^2}\mathop \sum \limits_{j = 1,j \ne i}^{N_k} f_{hh}^{i,i}{I_j}f_{hm}V_{hm}\xi_{dm}L(T) \\
+d_{hh}^k = \frac{A_{hm} f_{hm} t_{i,j}^k  \eta_{hm} \eta_{hh} } { A_h \chi_{h}^2} \mathop \sum \limits_{j = 1,j \ne i}^{N_k} f_{hh}^{i,i}{I_j} f_{hm} V_{hm}\xi_{dm}L(T) \\
 = \frac{0.0001*\text{TouchMucous}*\text{Tij * TransHandMucous* TransHandMucous} } {0.001*\text{HandDeathRate}^2} \mathop \\
 \sum \limits_{j = 1,j \ne i}^{N_k}\text{TouchHand*TouchMucous*} \text{TCID50*0.01*NasalDilute}*I_j 
 $$
